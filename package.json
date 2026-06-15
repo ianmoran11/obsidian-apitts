@@ -1,6 +1,6 @@
 {
   "name": "obsidian-apitts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generate embedded text-to-speech audio files for Obsidian notes.",
   "main": "main.js",
   "homepage": "https://github.com/ianmoran11/obsidian-apitts#readme",
