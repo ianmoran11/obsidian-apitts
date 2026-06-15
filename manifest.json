@@ -5,8 +5,8 @@
   "minAppVersion": "1.5.0",
   "description": "Generate embedded text-to-speech audio files for Obsidian notes.",
   "author": "APITTS",
-  "authorUrl": "",
+  "authorUrl": "https://github.com/ianmoran11",
   "license": "MIT",
-  "homepageUrl": "",
+  "homepageUrl": "https://github.com/ianmoran11/obsidian-apitts",
   "isDesktopOnly": false
 }

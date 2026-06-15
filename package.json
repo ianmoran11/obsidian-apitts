@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Generate embedded text-to-speech audio files for Obsidian notes.",
   "main": "main.js",
+  "homepage": "https://github.com/ianmoran11/obsidian-apitts#readme",
+  "bugs": {
+    "url": "https://github.com/ianmoran11/obsidian-apitts/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianmoran11/obsidian-apitts.git"
+  },
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "node esbuild.config.mjs --prod",
