@@ -1,0 +1,12 @@
+{
+  "id": "apitts",
+  "name": "APITTS",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Generate embedded text-to-speech audio files for Obsidian notes.",
+  "author": "APITTS",
+  "authorUrl": "",
+  "license": "MIT",
+  "homepageUrl": "",
+  "isDesktopOnly": false
+}

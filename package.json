@@ -1,0 +1,28 @@
+{
+  "name": "obsidian-apitts",
+  "version": "0.1.0",
+  "description": "Generate embedded text-to-speech audio files for Obsidian notes.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs --prod",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "text-to-speech",
+    "audio"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.20.0",
+    "obsidian": "latest",
+    "typescript": "^5.4.0"
+  },
+  "peerDependencies": {
+    "obsidian": "latest"
+  }
+}
