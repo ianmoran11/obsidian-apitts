@@ -92,6 +92,60 @@ export function splitMarkdownByHeadingLevel(
   return sections;
 }
 
+export function findMarkdownSectionAtLine(
+  markdown: string,
+  maxHeadingLevel: number,
+  cursorLine: number,
+): TtsSection {
+  const lines = markdown.split("\n");
+  const boundedCursorLine = Math.min(
+    Math.max(Math.floor(cursorLine), 0),
+    Math.max(lines.length - 1, 0),
+  );
+  const sections: Array<TtsSection & { startLine: number; endLine: number }> = [];
+  let currentTitle = "Introduction";
+  let currentStartLine = 0;
+  let readableSectionCount = 0;
+
+  const flush = (endLineExclusive: number) => {
+    const markdown = lines.slice(currentStartLine, endLineExclusive).join("\n").trim();
+    const hasReadableText = Boolean(stripMarkdownForSpeech(markdown));
+    if (hasReadableText) readableSectionCount += 1;
+
+    sections.push({
+      index: hasReadableText ? readableSectionCount : readableSectionCount + 1,
+      title: currentTitle,
+      markdown,
+      startLine: currentStartLine,
+      endLine: endLineExclusive - 1,
+    });
+  };
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const match = lines[lineIndex].match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+    const level = match ? match[1].length : 0;
+    if (match && level <= maxHeadingLevel) {
+      flush(lineIndex);
+      currentTitle = match[2].trim();
+      currentStartLine = lineIndex;
+    }
+  }
+
+  flush(lines.length);
+
+  const activeSection = sections.find(
+    (section) =>
+      boundedCursorLine >= section.startLine && boundedCursorLine <= section.endLine,
+  );
+
+  if (activeSection) {
+    const { startLine: _startLine, endLine: _endLine, ...section } = activeSection;
+    return section;
+  }
+
+  return makeWholeNoteSection(markdown);
+}
+
 export function splitTextIntoChunks(text: string, maxCharacters: number): string[] {
   const limit = Math.max(1000, maxCharacters);
   if (text.length <= limit) return [text];

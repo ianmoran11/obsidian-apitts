@@ -5,6 +5,7 @@ export type GenerationScope = "whole" | "sections";
 export interface GenerationOptions {
   scope: GenerationScope;
   headingLevel: number;
+  activeLine?: number;
 }
 
 export class GenerationOptionsModal extends Modal {
@@ -16,6 +17,7 @@ export class GenerationOptionsModal extends Modal {
     private readonly noteCount: number,
     defaultHeadingLevel: number,
     private readonly onSubmit: (options: GenerationOptions) => void,
+    private readonly hasActiveCursorSection = false,
   ) {
     super(app);
     this.headingLevel = defaultHeadingLevel;
@@ -32,7 +34,11 @@ export class GenerationOptionsModal extends Modal {
 
     new Setting(contentEl)
       .setName("Content to read")
-      .setDesc("Generate one audio set for each whole note, or split each note into sections.")
+      .setDesc(
+        this.hasActiveCursorSection
+          ? "Generate one audio set for the whole note, or only the heading section containing the cursor."
+          : "Generate one audio set for each whole note, or split each note into sections.",
+      )
       .addDropdown((dropdown) =>
         dropdown
           .addOption("whole", "Whole notes")
@@ -46,7 +52,11 @@ export class GenerationOptionsModal extends Modal {
 
     const headingSetting = new Setting(contentEl)
       .setName("Section heading level")
-      .setDesc("Sections start at headings up to and including this level; deeper headings stay inside their parent section.")
+      .setDesc(
+        this.hasActiveCursorSection
+          ? "Only the section containing the cursor is generated. Sections start at headings up to and including this level."
+          : "Sections start at headings up to and including this level; deeper headings stay inside their parent section.",
+      )
       .addDropdown((dropdown) => {
         for (let level = 1; level <= 6; level++) {
           dropdown.addOption(String(level), `Heading ${level}`);

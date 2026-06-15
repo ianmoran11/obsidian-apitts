@@ -99,12 +99,21 @@ export default class ApiTtsPlugin extends Plugin {
       return;
     }
 
+    const activeLine = files.length === 1 ? this.getActiveCursorLineForFile(files[0]) : undefined;
+
     new GenerationOptionsModal(
       this.app,
       files.length,
       this.settings.defaultHeadingLevel,
-      (options) => this.generate(files, options),
+      (options) => this.generate(files, { ...options, activeLine }),
+      activeLine !== undefined,
     ).open();
+  }
+
+  private getActiveCursorLineForFile(file: TFile): number | undefined {
+    const activeEditor = this.app.workspace.activeEditor;
+    if (activeEditor?.file?.path !== file.path || !activeEditor.editor) return undefined;
+    return activeEditor.editor.getCursor().line;
   }
 
   private async generate(

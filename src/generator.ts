@@ -6,6 +6,7 @@ import type { GenerationOptions } from "./ui/optionsModal";
 import type { ProgressModal } from "./ui/progressModal";
 import {
   buildAudioEmbedBlock,
+  findMarkdownSectionAtLine,
   insertOrReplaceAudioBlock,
   makeChunksForSection,
   makeWholeNoteSection,
@@ -115,7 +116,9 @@ export class TtsGenerator {
       const sections =
         options.scope === "whole"
           ? [makeWholeNoteSection(cleanMarkdown)]
-          : splitMarkdownByHeadingLevel(cleanMarkdown, options.headingLevel);
+          : options.activeLine !== undefined && files.length === 1
+            ? [findMarkdownSectionAtLine(originalMarkdown, options.headingLevel, options.activeLine)]
+            : splitMarkdownByHeadingLevel(cleanMarkdown, options.headingLevel);
       const chunks = sections.flatMap((section) =>
         makeChunksForSection(section, this.settings.ttsCharacterLimit),
       );
