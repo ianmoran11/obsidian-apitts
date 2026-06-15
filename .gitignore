@@ -1,6 +1,6 @@
 node_modules/
-main.js
-styles.css
+/main.js
+/styles.css
 dist-manifest.json
 *.map
 .DS_Store

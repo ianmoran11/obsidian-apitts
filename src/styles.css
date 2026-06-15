@@ -1,0 +1,66 @@
+.apitts-hidden {
+  display: none;
+}
+
+.apitts-note-picker-modal .modal-content,
+.apitts-progress-modal .modal-content {
+  min-width: min(720px, 90vw);
+}
+
+.apitts-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.apitts-picker-count {
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.apitts-note-list {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  max-height: 45vh;
+  overflow: auto;
+  padding: 0.25rem;
+}
+
+.apitts-note-row {
+  align-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.apitts-note-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.apitts-progress-status {
+  margin-bottom: 0.5rem;
+}
+
+.apitts-progress-bar {
+  width: 100%;
+}
+
+.apitts-progress-log {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  margin-top: 0.75rem;
+  max-height: 35vh;
+  overflow: auto;
+  padding: 0.5rem;
+  white-space: pre-wrap;
+}
+
+.apitts-progress-log-line {
+  margin-bottom: 0.25rem;
+}
