@@ -1,39 +1,50 @@
-import { App, Modal, Setting } from "obsidian";
+import { App } from "obsidian";
 
-export class ProgressModal extends Modal {
+export class ProgressModal {
+  private containerEl: HTMLElement | null = null;
   private progressEl!: HTMLProgressElement;
   private statusEl!: HTMLElement;
   private logEl!: HTMLElement;
+  private cancelButtonEl!: HTMLButtonElement;
   private current = 0;
   private total = 1;
 
   constructor(
-    app: App,
+    private readonly app: App,
     private readonly abortController: AbortController,
-  ) {
-    super(app);
-  }
+  ) {}
 
-  onOpen(): void {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("apitts-progress-modal");
-    contentEl.createEl("h2", { text: "Generating TTS audio" });
-    this.statusEl = contentEl.createDiv({ cls: "apitts-progress-status" });
-    this.progressEl = contentEl.createEl("progress", { cls: "apitts-progress-bar" });
+  open(): void {
+    this.close();
+
+    this.containerEl = this.app.workspace.containerEl.createDiv({
+      cls: "apitts-progress-popover",
+      attr: { "aria-live": "polite" },
+    });
+
+    const headerEl = this.containerEl.createDiv({ cls: "apitts-progress-header" });
+    headerEl.createDiv({ cls: "apitts-progress-title", text: "Generating TTS audio" });
+    this.cancelButtonEl = headerEl.createEl("button", {
+      cls: "apitts-progress-cancel-button",
+      text: "Cancel",
+    });
+    this.cancelButtonEl.onclick = () => {
+      this.abortController.abort();
+      this.cancelButtonEl.disabled = true;
+      this.cancelButtonEl.setText("Cancelling…");
+      this.addLog("Cancelling after the current request stops...");
+    };
+
+    this.statusEl = this.containerEl.createDiv({ cls: "apitts-progress-status" });
+    this.progressEl = this.containerEl.createEl("progress", { cls: "apitts-progress-bar" });
     this.progressEl.max = this.total;
     this.progressEl.value = this.current;
-    this.logEl = contentEl.createDiv({ cls: "apitts-progress-log" });
 
-    new Setting(contentEl).addButton((button) =>
-      button
-        .setWarning()
-        .setButtonText("Cancel")
-        .onClick(() => {
-          this.abortController.abort();
-          this.addLog("Cancelling after the current request stops...");
-        }),
-    );
+    const logDetailsEl = this.containerEl.createEl("details", {
+      cls: "apitts-progress-log-details",
+    });
+    logDetailsEl.createEl("summary", { text: "Show log" });
+    this.logEl = logDetailsEl.createDiv({ cls: "apitts-progress-log" });
 
     this.setProgress(0, 1, "Preparing notes...");
   }
@@ -57,9 +68,17 @@ export class ProgressModal extends Modal {
   finish(message: string): void {
     this.setProgress(this.total, this.total, message);
     this.addLog(message);
+    if (this.cancelButtonEl) {
+      this.cancelButtonEl.disabled = false;
+      this.cancelButtonEl.removeClass("apitts-progress-cancel-button");
+      this.cancelButtonEl.addClass("apitts-progress-close-button");
+      this.cancelButtonEl.setText("Close");
+      this.cancelButtonEl.onclick = () => this.close();
+    }
   }
 
-  onClose(): void {
-    this.contentEl.empty();
+  close(): void {
+    this.containerEl?.remove();
+    this.containerEl = null;
   }
 }

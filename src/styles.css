@@ -2,8 +2,7 @@
   display: none;
 }
 
-.apitts-note-picker-modal .modal-content,
-.apitts-progress-modal .modal-content {
+.apitts-note-picker-modal .modal-content {
   min-width: min(720px, 90vw);
 }
 
@@ -40,22 +39,71 @@
   background: var(--background-modifier-hover);
 }
 
+.apitts-progress-popover {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  bottom: 1rem;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+  max-width: min(360px, calc(100vw - 2rem));
+  padding: 0.75rem;
+  position: fixed;
+  right: 1rem;
+  z-index: var(--layer-popover);
+}
+
+.apitts-progress-header {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.apitts-progress-title {
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+}
+
+.apitts-progress-cancel-button,
+.apitts-progress-close-button {
+  font-size: var(--font-ui-smaller);
+  min-height: unset;
+  padding: 2px 8px;
+}
+
+.apitts-progress-cancel-button {
+  color: var(--text-error);
+}
+
 .apitts-progress-status {
-  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin-bottom: 0.35rem;
 }
 
 .apitts-progress-bar {
+  display: block;
+  height: 0.5rem;
   width: 100%;
+}
+
+.apitts-progress-log-details {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin-top: 0.5rem;
 }
 
 .apitts-progress-log {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
+  color: var(--text-muted);
   font-family: var(--font-monospace);
   font-size: var(--font-ui-smaller);
-  margin-top: 0.75rem;
-  max-height: 35vh;
+  margin-top: 0.5rem;
+  max-height: 30vh;
   overflow: auto;
   padding: 0.5rem;
   white-space: pre-wrap;
