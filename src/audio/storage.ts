@@ -40,7 +40,13 @@ export async function ensureFolder(vault: Vault, folderPath: string): Promise<vo
     if (existing) {
       throw new Error(`Cannot create folder ${current}; a file already exists there.`);
     }
-    await vault.createFolder(current);
+    try {
+      await vault.createFolder(current);
+    } catch (error) {
+      // The folder may already exist even though getAbstractFileByPath missed it
+      // (metadata cache lag, sync, or case-insensitive filesystems). Tolerate that.
+      if (!(vault.getAbstractFileByPath(current) instanceof TFolder)) throw error;
+    }
   }
 }
 
@@ -87,7 +93,17 @@ export async function saveAudioToMirroredFolder(
   if (existing instanceof TFile) {
     await vault.modifyBinary(existing, opts.audio);
   } else {
-    await vault.createBinary(path, opts.audio);
+    try {
+      await vault.createBinary(path, opts.audio);
+    } catch (error) {
+      // If the file already exists despite the cache miss, overwrite it.
+      const current = vault.getAbstractFileByPath(path);
+      if (current instanceof TFile) {
+        await vault.modifyBinary(current, opts.audio);
+      } else {
+        throw error;
+      }
+    }
   }
 
   return { path, basename };
