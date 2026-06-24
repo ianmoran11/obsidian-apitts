@@ -135,6 +135,38 @@ export class AudiobookExportView extends BasesView {
     if (groups.length > 6) {
       previewList.createEl("li", { text: `…and ${groups.length - 6} more` });
     }
+
+    this.renderFileBreakdown(groups, totalFiles);
+  }
+
+  /** Collapsible per-file list showing each source file and its new name. */
+  private renderFileBreakdown(groups: BasesEntryGroup[], totalFiles: number): void {
+    const options = this.readOptions();
+    const details = this.summaryEl.createEl("details", {
+      cls: "apitts-audiobook-files-details",
+    });
+    details.createEl("summary", {
+      text: `Show included files (${totalFiles})`,
+    });
+    const list = details.createDiv({ cls: "apitts-audiobook-files" });
+
+    for (const group of groups) {
+      const folderName = this.groupFolderName(group);
+      const folder = `${options.outputRoot}/${folderName}`;
+      list.createDiv({
+        cls: "apitts-audiobook-files-group",
+        text: `${folderName}/ — ${group.entries.length} file${group.entries.length === 1 ? "" : "s"}`,
+      });
+
+      const usedNames = new Set<string>();
+      for (const entry of group.entries) {
+        const name = this.previewName(this.app.vault, folder, entry, options, usedNames);
+        list.createDiv({
+          cls: "apitts-audiobook-files-line",
+          text: `${entry.file.path}  →  ${name}`,
+        });
+      }
+    }
   }
 
   private groupFolderName(group: BasesEntryGroup): string {
@@ -233,17 +265,7 @@ export class AudiobookExportView extends BasesView {
     summary: ExportSummary,
   ): Promise<void> {
     const source = entry.file;
-    const rawName = entry.getValue(options.filenameProp)?.toString().trim();
-    const { stem, ext } = splitName(rawName || source.name, source.extension);
-
-    const name = this.resolveName(
-      vault,
-      folder,
-      stem,
-      ext,
-      usedNames,
-      options.onConflict === "keepBoth",
-    );
+    const name = this.previewName(vault, folder, entry, options, usedNames);
     const dest = `${folder}/${name}`;
     const existing = vault.getAbstractFileByPath(dest);
 
@@ -270,6 +292,26 @@ export class AudiobookExportView extends BasesView {
     if (options.copyMode === "move") {
       await vault.trash(source, true);
     }
+  }
+
+  /** Resolve the final filename an entry will be written as, mutating usedNames. */
+  private previewName(
+    vault: Vault,
+    folder: string,
+    entry: BasesEntry,
+    options: ExportOptions,
+    usedNames: Set<string>,
+  ): string {
+    const rawName = entry.getValue(options.filenameProp)?.toString().trim();
+    const { stem, ext } = splitName(rawName || entry.file.name, entry.file.extension);
+    return this.resolveName(
+      vault,
+      folder,
+      stem,
+      ext,
+      usedNames,
+      options.onConflict === "keepBoth",
+    );
   }
 
   /**
