@@ -30,7 +30,7 @@ function normalizeRoot(root: string): string {
   return (root || "_Audio").replace(/^\/+|\/+$/g, "") || "_Audio";
 }
 
-async function ensureFolder(vault: Vault, folderPath: string): Promise<void> {
+export async function ensureFolder(vault: Vault, folderPath: string): Promise<void> {
   const parts = folderPath.split("/").filter(Boolean);
   let current = "";
   for (const part of parts) {

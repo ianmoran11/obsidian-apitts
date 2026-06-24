@@ -15,15 +15,22 @@ import {
 import { GenerationOptionsModal } from "./ui/optionsModal";
 import { NotePickerModal } from "./ui/notePickerModal";
 import { ProgressModal } from "./ui/progressModal";
+import {
+  AUDIOBOOK_EXPORT_VIEW,
+  AudiobookExportView,
+  audiobookExportRegistration,
+} from "./bases/audiobookExportView";
 
 export default class ApiTtsPlugin extends Plugin {
   settings!: ApiTtsSettings;
+  activeExportView: AudiobookExportView | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
     this.addSettingTab(new ApiTtsSettingTab(this.app, this));
     this.registerCommands();
     this.registerFileMenu();
+    this.registerAudiobookExportView();
   }
 
   async loadSettings(): Promise<void> {
@@ -51,6 +58,25 @@ export default class ApiTtsPlugin extends Plugin {
       name: "Generate TTS audio for multiple notes...",
       callback: () => this.openNotePicker(),
     });
+
+    this.addCommand({
+      id: "export-audiobook-from-active-base",
+      name: "Export audiobook from active base",
+      checkCallback: (checking) => {
+        const view = this.activeExportView;
+        if (!view) return false;
+        if (!checking) void view.runExport();
+        return true;
+      },
+    });
+  }
+
+  private registerAudiobookExportView(): void {
+    if (typeof this.registerBasesView !== "function") return;
+    this.registerBasesView(
+      AUDIOBOOK_EXPORT_VIEW,
+      audiobookExportRegistration(this.app, this),
+    );
   }
 
   private registerFileMenu(): void {

@@ -112,3 +112,55 @@
 .apitts-progress-log-line {
   margin-bottom: 0.25rem;
 }
+
+.apitts-audiobook-export {
+  padding: 1rem;
+  max-width: 640px;
+}
+
+.apitts-audiobook-title {
+  font-size: var(--font-ui-large);
+  font-weight: var(--font-bold);
+  margin-bottom: 0.35rem;
+}
+
+.apitts-audiobook-desc {
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.apitts-audiobook-button {
+  margin-bottom: 0.75rem;
+}
+
+.apitts-audiobook-summary {
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.apitts-audiobook-preview {
+  margin: 0.35rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.apitts-audiobook-status {
+  margin-bottom: 0.5rem;
+  min-height: 1.2em;
+}
+
+.apitts-audiobook-log {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  margin-top: 0.5rem;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 0.5rem;
+  white-space: pre-wrap;
+}
+
+.apitts-audiobook-log-line {
+  margin-bottom: 0.25rem;
+}

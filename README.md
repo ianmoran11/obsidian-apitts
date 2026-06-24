@@ -9,6 +9,22 @@ APITTS is an Obsidian plugin that generates embedded text-to-speech audio for no
 - Save audio under a mirrored output folder, e.g. `Reading/Chapter 1.md` -> `_Audio/Reading/Chapter 1/001-whole-note.mp3`.
 - Insert or update an embedded audio block in each note.
 - Show progress and per-file logs while generation runs.
+- Export a grouped [Base](https://help.obsidian.md/bases) into per-group folders, copying each file under a chosen filename — handy for turning lesson audio into audiobook folders.
+
+## Export a Base to audiobook folders
+
+Some audiobook players treat a folder as a single book, so its tracks must live together with chapter-ordered names. APITTS can build those folders from a Base, reusing the Base's own filters, grouping, and formulas (requires Obsidian 1.10+).
+
+1. Open a `.base`, add a view, and choose the **Audiobook export** view type.
+2. Group the view by the property whose value should become the folder name (e.g. a course name).
+3. Open the view options and set:
+   - **Filename property** — the property used as the new file name (default `formula.new-mp3-name`). If it omits the extension, the source file's extension is kept.
+   - **Output folder** — destination root (default `Audiobooks`). Files are written to `Output folder / Group / Filename`.
+   - **Copy or move** — copy (default) leaves the source files in place; move sends them to the trash after copying.
+   - **If a file exists** — `Overwrite` (default), `Skip`, or `Keep both` (numbered suffix).
+4. Click **Copy to audiobook folders**. The view shows progress and a per-file log.
+
+A command, **Export audiobook from active base**, runs the same export while an Audiobook export view is active.
 
 ## Installation with BRAT
 
