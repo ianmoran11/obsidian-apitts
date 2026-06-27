@@ -5,6 +5,8 @@ export interface TtsSection {
   index: number;
   title: string;
   markdown: string;
+  /** When true, markdown is read close to verbatim (used for code blocks). */
+  preformatted?: boolean;
 }
 
 export interface TtsChunk {
@@ -90,6 +92,129 @@ export function splitMarkdownByHeadingLevel(
   }
 
   return sections;
+}
+
+function titleCaseWord(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/** A section that also knows which source lines it spans, for cursor lookup. */
+interface RangedSection extends TtsSection {
+  startLine: number;
+  endLine: number;
+}
+
+function dropRange({ startLine: _s, endLine: _e, ...section }: RangedSection): TtsSection {
+  return section;
+}
+
+function pickSectionAtLine(sections: RangedSection[], cursorLine: number): TtsSection | null {
+  const line = Math.max(0, Math.floor(cursorLine));
+  const hit = sections.find((section) => line >= section.startLine && line <= section.endLine);
+  return hit ? dropRange(hit) : null;
+}
+
+function parseCalloutSections(markdown: string): RangedSection[] {
+  const lines = markdown.split("\n");
+  const sections: RangedSection[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const start = lines[i].match(/^\s*>\s*\[!([\w-]+)\][+-]?(.*)$/);
+    if (!start) {
+      i++;
+      continue;
+    }
+
+    const type = start[1];
+    const titleText = start[2].trim();
+    const startLine = i;
+    const contentLines: string[] = [];
+    if (titleText) contentLines.push(titleText);
+    i++;
+
+    while (i < lines.length && /^\s*>/.test(lines[i])) {
+      contentLines.push(lines[i].replace(/^\s*>\s?/, ""));
+      i++;
+    }
+
+    const body = contentLines.join("\n").trim();
+    if (stripMarkdownForSpeech(body)) {
+      sections.push({
+        index: sections.length + 1,
+        title: titleText || titleCaseWord(type),
+        markdown: body,
+        startLine,
+        endLine: i - 1,
+      });
+    }
+  }
+
+  return sections;
+}
+
+function parseCodeBlockSections(markdown: string): RangedSection[] {
+  const lines = markdown.split("\n");
+  const sections: RangedSection[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const fence = lines[i].match(/^\s*(`{3,}|~{3,})\s*([\w+#.-]*)/);
+    if (!fence) {
+      i++;
+      continue;
+    }
+
+    const fenceChar = fence[1][0];
+    const fenceLen = fence[1].length;
+    const lang = fence[2].trim();
+    const closeRe = new RegExp(`^\\s*\\${fenceChar}{${fenceLen},}\\s*$`);
+    const startLine = i;
+    const codeLines: string[] = [];
+    i++;
+
+    while (i < lines.length && !closeRe.test(lines[i])) {
+      codeLines.push(lines[i]);
+      i++;
+    }
+    const endLine = Math.min(i, lines.length - 1);
+    i++; // step past the closing fence (or past the end)
+
+    const code = codeLines.join("\n");
+    if (code.trim()) {
+      const index = sections.length + 1;
+      sections.push({
+        index,
+        title: lang ? `${titleCaseWord(lang)} code block ${index}` : `Code block ${index}`,
+        markdown: code,
+        preformatted: true,
+        startLine,
+        endLine,
+      });
+    }
+  }
+
+  return sections;
+}
+
+/** One section per Obsidian callout (`> [!type] Title` plus its quoted body). */
+export function splitMarkdownByCallouts(markdown: string): TtsSection[] {
+  return parseCalloutSections(markdown).map(dropRange);
+}
+
+/** The single callout containing the cursor line, or null if the cursor is outside any callout. */
+export function findCalloutAtLine(markdown: string, cursorLine: number): TtsSection | null {
+  return pickSectionAtLine(parseCalloutSections(markdown), cursorLine);
+}
+
+/** One section per fenced code block, read close to verbatim. */
+export function splitMarkdownByCodeBlocks(markdown: string): TtsSection[] {
+  return parseCodeBlockSections(markdown).map(dropRange);
+}
+
+/** The single code block containing the cursor line, or null if the cursor is outside any code block. */
+export function findCodeBlockAtLine(markdown: string, cursorLine: number): TtsSection | null {
+  return pickSectionAtLine(parseCodeBlockSections(markdown), cursorLine);
 }
 
 export function findMarkdownSectionAtLine(
@@ -248,7 +373,9 @@ export function makeWholeNoteSection(markdown: string): TtsSection {
 }
 
 export function makeChunksForSection(section: TtsSection, maxCharacters: number): TtsChunk[] {
-  const text = stripMarkdownForSpeech(section.markdown);
+  const text = section.preformatted
+    ? section.markdown.replace(/\n{3,}/g, "\n\n").trim()
+    : stripMarkdownForSpeech(section.markdown);
   if (!text) return [];
   const texts = splitTextIntoChunks(text, maxCharacters);
   return texts.map((chunkText, index) => ({

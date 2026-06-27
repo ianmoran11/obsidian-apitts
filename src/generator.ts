@@ -6,13 +6,18 @@ import type { GenerationOptions } from "./ui/optionsModal";
 import type { ProgressModal } from "./ui/progressModal";
 import {
   buildAudioEmbedBlock,
+  findCalloutAtLine,
+  findCodeBlockAtLine,
   findMarkdownSectionAtLine,
   insertOrReplaceAudioBlock,
   makeChunksForSection,
   makeWholeNoteSection,
   removeExistingAudioBlock,
+  splitMarkdownByCallouts,
+  splitMarkdownByCodeBlocks,
   splitMarkdownByHeadingLevel,
   type TtsChunk,
+  type TtsSection,
 } from "./text/markdown";
 
 interface PreparedFile {
@@ -113,12 +118,12 @@ export class TtsGenerator {
     for (const file of files) {
       const originalMarkdown = await this.vault.read(file);
       const cleanMarkdown = removeExistingAudioBlock(originalMarkdown);
-      const sections =
-        options.scope === "whole"
-          ? [makeWholeNoteSection(cleanMarkdown)]
-          : options.activeLine !== undefined && files.length === 1
-            ? [findMarkdownSectionAtLine(originalMarkdown, options.headingLevel, options.activeLine)]
-            : splitMarkdownByHeadingLevel(cleanMarkdown, options.headingLevel);
+      const sections = this.computeSections(
+        originalMarkdown,
+        cleanMarkdown,
+        options,
+        files.length === 1,
+      );
       const chunks = sections.flatMap((section) =>
         makeChunksForSection(section, this.settings.ttsCharacterLimit),
       );
@@ -130,6 +135,45 @@ export class TtsGenerator {
     }
 
     return prepared;
+  }
+
+  /**
+   * Resolve which sections to read for a note. When "current only" is chosen and a
+   * cursor position is available for a single note, return just the section / callout /
+   * code block containing the cursor; otherwise split the whole note for the scope.
+   */
+  private computeSections(
+    originalMarkdown: string,
+    cleanMarkdown: string,
+    options: GenerationOptions,
+    single: boolean,
+  ): TtsSection[] {
+    const useCursor = options.cursorOnly && options.activeLine !== undefined && single;
+
+    switch (options.scope) {
+      case "whole":
+        return [makeWholeNoteSection(cleanMarkdown)];
+
+      case "callouts": {
+        const atCursor = useCursor
+          ? findCalloutAtLine(originalMarkdown, options.activeLine!)
+          : null;
+        return atCursor ? [atCursor] : splitMarkdownByCallouts(cleanMarkdown);
+      }
+
+      case "codeBlocks": {
+        const atCursor = useCursor
+          ? findCodeBlockAtLine(originalMarkdown, options.activeLine!)
+          : null;
+        return atCursor ? [atCursor] : splitMarkdownByCodeBlocks(cleanMarkdown);
+      }
+
+      case "sections":
+      default:
+        return useCursor
+          ? [findMarkdownSectionAtLine(originalMarkdown, options.headingLevel, options.activeLine!)]
+          : splitMarkdownByHeadingLevel(cleanMarkdown, options.headingLevel);
+    }
   }
 
   private describeChunk(chunk: TtsChunk): string {

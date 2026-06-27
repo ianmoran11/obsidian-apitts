@@ -1,16 +1,18 @@
 import { App, Modal, Setting } from "obsidian";
 
-export type GenerationScope = "whole" | "sections";
+export type GenerationScope = "whole" | "sections" | "callouts" | "codeBlocks";
 
 export interface GenerationOptions {
   scope: GenerationScope;
   headingLevel: number;
+  cursorOnly: boolean;
   activeLine?: number;
 }
 
 export class GenerationOptionsModal extends Modal {
-  private selectedScope: GenerationScope = "whole";
+  private selectedScope: GenerationScope;
   private headingLevel: number;
+  private cursorOnly = true;
 
   constructor(
     app: App,
@@ -21,6 +23,8 @@ export class GenerationOptionsModal extends Modal {
   ) {
     super(app);
     this.headingLevel = defaultHeadingLevel;
+    // When a cursor is available, default to reading just the section at the cursor.
+    this.selectedScope = hasActiveCursorSection ? "sections" : "whole";
   }
 
   onOpen(): void {
@@ -36,26 +40,26 @@ export class GenerationOptionsModal extends Modal {
       .setName("Content to read")
       .setDesc(
         this.hasActiveCursorSection
-          ? "Generate one audio set for the whole note, or only the heading section containing the cursor."
-          : "Generate one audio set for each whole note, or split each note into sections.",
+          ? "Whole note, the heading section containing the cursor, or one audio per code block / callout."
+          : "Whole note, sections by heading level, or one audio per code block / callout.",
       )
       .addDropdown((dropdown) =>
         dropdown
           .addOption("whole", "Whole notes")
           .addOption("sections", "Sections by heading level")
+          .addOption("codeBlocks", "Code blocks")
+          .addOption("callouts", "Callouts")
           .setValue(this.selectedScope)
           .onChange((value) => {
             this.selectedScope = value as GenerationScope;
-            this.renderHeadingVisibility();
+            this.renderConditionalSettings();
           }),
       );
 
     const headingSetting = new Setting(contentEl)
       .setName("Section heading level")
       .setDesc(
-        this.hasActiveCursorSection
-          ? "Only the section containing the cursor is generated. Sections start at headings up to and including this level."
-          : "Sections start at headings up to and including this level; deeper headings stay inside their parent section.",
+        "Sections start at headings up to and including this level; deeper headings stay inside their parent section.",
       )
       .addDropdown((dropdown) => {
         for (let level = 1; level <= 6; level++) {
@@ -66,6 +70,18 @@ export class GenerationOptionsModal extends Modal {
         });
       });
     headingSetting.settingEl.addClass("apitts-heading-level-setting");
+
+    const cursorSetting = new Setting(contentEl)
+      .setName("Only the block at the cursor")
+      .setDesc(
+        "Generate a single audio for the section, callout, or code block containing the cursor. Turn off to generate one audio per match in the note.",
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(this.cursorOnly).onChange((value) => {
+          this.cursorOnly = value;
+        }),
+      );
+    cursorSetting.settingEl.addClass("apitts-cursor-only-setting");
 
     new Setting(contentEl)
       .addButton((button) =>
@@ -79,18 +95,27 @@ export class GenerationOptionsModal extends Modal {
           .setButtonText("Generate audio")
           .onClick(() => {
             this.close();
-            this.onSubmit({ scope: this.selectedScope, headingLevel: this.headingLevel });
+            this.onSubmit({
+              scope: this.selectedScope,
+              headingLevel: this.headingLevel,
+              cursorOnly: this.cursorOnly,
+            });
           }),
       );
 
-    this.renderHeadingVisibility();
+    this.renderConditionalSettings();
   }
 
-  private renderHeadingVisibility(): void {
-    const setting = this.contentEl.querySelector<HTMLElement>(".apitts-heading-level-setting");
-    if (setting) {
-      setting.toggleClass("apitts-hidden", this.selectedScope !== "sections");
-    }
+  private renderConditionalSettings(): void {
+    const headingSetting = this.contentEl.querySelector<HTMLElement>(".apitts-heading-level-setting");
+    headingSetting?.toggleClass("apitts-hidden", this.selectedScope !== "sections");
+
+    // "Current block only" applies to the splitting scopes, and only when a cursor is available.
+    const cursorSetting = this.contentEl.querySelector<HTMLElement>(".apitts-cursor-only-setting");
+    cursorSetting?.toggleClass(
+      "apitts-hidden",
+      !this.hasActiveCursorSection || this.selectedScope === "whole",
+    );
   }
 
   onClose(): void {
