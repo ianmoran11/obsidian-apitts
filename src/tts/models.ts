@@ -29,9 +29,13 @@ export const TTS_MODELS: TtsModelOption[] = [
   },
 ];
 
-/** Default natural-language voice description for voice-design models. */
+/**
+ * Default natural-language voice description for voice-design models.
+ * Qwen3-TTS-VoiceDesign is trained on natural-language descriptions, not
+ * tag/`key:value` syntax, so the default reads as a sentence.
+ */
 export const DEFAULT_VOICE_DESCRIPTION =
-  "tone:bright, style:engaging, accent:American, gender:male, role:storyteller";
+  "A bright, engaging American male storyteller voice";
 
 export function findTtsModel(slug: string): TtsModelOption | undefined {
   const normalized = slug.trim().toLowerCase();

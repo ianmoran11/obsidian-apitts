@@ -1,4 +1,5 @@
 import { isVoiceDesignModel } from "./models";
+import { wavToMp3 } from "../audio/encode";
 
 export interface DeepInfraTtsRequest {
   text: string;
@@ -74,17 +75,33 @@ export class DeepInfraTtsClient {
     }
 
     const contentType = response.headers.get("content-type") ?? "";
-    if (contentType.includes("application/json")) {
-      return this.readJsonAudio(await response.json(), outputFormat);
-    }
+    const result = contentType.includes("application/json")
+      ? this.readJsonAudio(await response.json())
+      : {
+          audio: await response.arrayBuffer(),
+          extension: this.detectExtension(contentType),
+        };
 
-    return {
-      audio: await response.arrayBuffer(),
-      extension: this.pickExtension(contentType, outputFormat),
-    };
+    return this.normalizeFormat(result, outputFormat);
   }
 
-  private readJsonAudio(data: unknown, requestedFormat: "mp3" | "wav"): DeepInfraTtsResult {
+  /**
+   * Ensure the audio matches the requested format. Some DeepInfra models
+   * (notably Qwen3-TTS-VoiceDesign) ignore `output_format` and always return
+   * WAV, so when MP3 was requested we transcode WAV -> MP3 client-side.
+   */
+  private normalizeFormat(
+    result: DeepInfraTtsResult,
+    requestedFormat: "mp3" | "wav",
+  ): DeepInfraTtsResult {
+    if (requestedFormat === "mp3" && result.extension === "wav") {
+      const mp3 = wavToMp3(result.audio);
+      if (mp3) return { audio: mp3, extension: "mp3" };
+    }
+    return result;
+  }
+
+  private readJsonAudio(data: unknown): DeepInfraTtsResult {
     const audio = (data as { audio?: unknown }).audio;
     if (typeof audio !== "string") {
       throw new Error("DeepInfra TTS response did not include audio data.");
@@ -101,18 +118,17 @@ export class DeepInfraTtsClient {
 
     return {
       audio: bytes.buffer,
-      extension: this.pickExtension(mime, requestedFormat),
+      extension: this.detectExtension(mime),
     };
   }
 
   /**
-   * Choose the file extension from the response mime type, falling back to the
-   * requested format when the mime is ambiguous (e.g. application/octet-stream).
+   * Choose the file extension from a mime type or content-type header. Defaults
+   * to wav for unknown types, since DeepInfra TTS responses default to wav.
    */
-  private pickExtension(mime: string, requestedFormat: "mp3" | "wav"): "mp3" | "wav" {
-    if (mime.includes("wav")) return "wav";
+  private detectExtension(mime: string): "mp3" | "wav" {
     if (mime.includes("mpeg") || mime.includes("mp3")) return "mp3";
-    return requestedFormat;
+    return "wav";
   }
 
   private async readErrorMessage(response: Response): Promise<string> {

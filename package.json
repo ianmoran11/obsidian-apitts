@@ -1,6 +1,6 @@
 {
   "name": "obsidian-apitts",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Generate embedded text-to-speech audio files for Obsidian notes.",
   "main": "main.js",
   "homepage": "https://github.com/ianmoran11/obsidian-apitts#readme",
@@ -32,5 +32,8 @@
   },
   "peerDependencies": {
     "obsidian": "latest"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "^1.2.7"
   }
 }

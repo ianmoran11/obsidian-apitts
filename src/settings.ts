@@ -33,6 +33,15 @@ export const DEFAULT_SETTINGS: ApiTtsSettings = {
   defaultHeadingLevel: 2,
 };
 
+/**
+ * Old default voice descriptions that used tag/`key:value` syntax, which
+ * Qwen3-TTS-VoiceDesign doesn't interpret well. Migrated to the natural-language
+ * default on load.
+ */
+export const LEGACY_VOICE_DESCRIPTIONS: string[] = [
+  "tone:bright, style:engaging, accent:American, gender:male, role:storyteller",
+];
+
 class FolderSuggest extends AbstractInputSuggest<TFolder> {
   constructor(
     app: App,
@@ -122,7 +131,7 @@ export class ApiTtsSettingTab extends PluginSettingTab {
       new Setting(containerEl)
         .setName("Voice description")
         .setDesc(
-          "Natural-language description of the voice for Qwen3-TTS-VoiceDesign (e.g. tone, style, accent, gender, role).",
+          "Describe the voice in natural language for Qwen3-TTS-VoiceDesign (e.g. \"A bright, engaging American male storyteller voice\"). Avoid tag/key:value syntax — the model understands full sentences.",
         )
         .addTextArea((text) => {
           text

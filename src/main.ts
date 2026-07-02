@@ -10,6 +10,7 @@ import { TtsGenerator } from "./generator";
 import {
   ApiTtsSettingTab,
   DEFAULT_SETTINGS,
+  LEGACY_VOICE_DESCRIPTIONS,
   type ApiTtsSettings,
 } from "./settings";
 import { GenerationOptionsModal } from "./ui/optionsModal";
@@ -34,7 +35,14 @@ export default class ApiTtsPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loaded = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    // Migrate the old tag-format voice description (not understood well by
+    // Qwen3-TTS-VoiceDesign) to the natural-language default.
+    if (LEGACY_VOICE_DESCRIPTIONS.includes(loaded.voiceDescription)) {
+      loaded.voiceDescription = DEFAULT_SETTINGS.voiceDescription;
+      await this.saveSettings();
+    }
+    this.settings = loaded;
   }
 
   async saveSettings(): Promise<void> {

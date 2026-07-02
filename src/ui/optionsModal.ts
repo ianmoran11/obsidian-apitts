@@ -85,7 +85,7 @@ export class GenerationOptionsModal extends Modal {
     const voiceDescriptionSetting = new Setting(contentEl)
       .setName("Voice description")
       .setDesc(
-        "Natural-language description of the voice for Qwen3-TTS-VoiceDesign (e.g. tone, style, accent, gender, role).",
+        "Describe the voice in a full sentence for Qwen3-TTS-VoiceDesign (e.g. \"A bright, engaging American male storyteller voice\"). Tag/key:value syntax is not understood well.",
       )
       .addTextArea((text) => {
         text
