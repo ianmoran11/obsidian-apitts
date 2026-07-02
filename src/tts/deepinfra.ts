@@ -34,8 +34,9 @@ export class DeepInfraTtsClient {
   ): Promise<DeepInfraTtsResult> {
     const model = encodeURIComponent(request.model).replace(/%2F/g, "/");
     const voiceDesign = isVoiceDesignModel(request.model);
+    const outputFormat = request.outputFormat ?? "mp3";
     const body: Record<string, string> = {
-      output_format: request.outputFormat ?? "mp3",
+      output_format: outputFormat,
     };
 
     if (voiceDesign) {
@@ -49,8 +50,11 @@ export class DeepInfraTtsClient {
       if (request.voice?.trim()) body.voice = request.voice.trim();
     }
 
+    // DeepInfra's inference endpoints read `output_format` as a query parameter
+    // (default wav); sending it only in the body yields wav audio.
+    const params = new URLSearchParams({ output_format: outputFormat });
     const response = await fetch(
-      `https://api.deepinfra.com/v1/inference/${model}`,
+      `https://api.deepinfra.com/v1/inference/${model}?${params.toString()}`,
       {
         method: "POST",
         headers: {
@@ -71,16 +75,16 @@ export class DeepInfraTtsClient {
 
     const contentType = response.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
-      return this.readJsonAudio(await response.json());
+      return this.readJsonAudio(await response.json(), outputFormat);
     }
 
     return {
       audio: await response.arrayBuffer(),
-      extension: contentType.includes("wav") ? "wav" : "mp3",
+      extension: this.pickExtension(contentType, outputFormat),
     };
   }
 
-  private readJsonAudio(data: unknown): DeepInfraTtsResult {
+  private readJsonAudio(data: unknown, requestedFormat: "mp3" | "wav"): DeepInfraTtsResult {
     const audio = (data as { audio?: unknown }).audio;
     if (typeof audio !== "string") {
       throw new Error("DeepInfra TTS response did not include audio data.");
@@ -97,8 +101,18 @@ export class DeepInfraTtsClient {
 
     return {
       audio: bytes.buffer,
-      extension: mime.includes("wav") ? "wav" : "mp3",
+      extension: this.pickExtension(mime, requestedFormat),
     };
+  }
+
+  /**
+   * Choose the file extension from the response mime type, falling back to the
+   * requested format when the mime is ambiguous (e.g. application/octet-stream).
+   */
+  private pickExtension(mime: string, requestedFormat: "mp3" | "wav"): "mp3" | "wav" {
+    if (mime.includes("wav")) return "wav";
+    if (mime.includes("mpeg") || mime.includes("mp3")) return "mp3";
+    return requestedFormat;
   }
 
   private async readErrorMessage(response: Response): Promise<string> {
