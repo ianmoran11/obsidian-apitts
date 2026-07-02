@@ -7,11 +7,17 @@ import {
   TFolder,
 } from "obsidian";
 import type ApiTtsPlugin from "./main";
+import {
+  DEFAULT_VOICE_DESCRIPTION,
+  TTS_MODELS,
+  isVoiceDesignModel,
+} from "./tts/models";
 
 export interface ApiTtsSettings {
   deepInfraApiKey: string;
   ttsModel: string;
   ttsVoice: string;
+  voiceDescription: string;
   audioOutputFolder: string;
   ttsCharacterLimit: number;
   defaultHeadingLevel: number;
@@ -21,6 +27,7 @@ export const DEFAULT_SETTINGS: ApiTtsSettings = {
   deepInfraApiKey: "",
   ttsModel: "hexgrad/Kokoro-82M",
   ttsVoice: "",
+  voiceDescription: DEFAULT_VOICE_DESCRIPTION,
   audioOutputFolder: "_Audio",
   ttsCharacterLimit: 12000,
   defaultHeadingLevel: 2,
@@ -86,29 +93,49 @@ export class ApiTtsSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("TTS model")
-      .setDesc("DeepInfra model slug. The default is copied from Scholia.")
-      .addText((text) =>
-        text
-          .setPlaceholder("hexgrad/Kokoro-82M")
-          .setValue(this.plugin.settings.ttsModel)
-          .onChange(async (value) => {
-            this.plugin.settings.ttsModel = value.trim() || DEFAULT_SETTINGS.ttsModel;
-            await this.plugin.saveSettings();
-          }),
-      );
+      .setDesc("DeepInfra text-to-speech model used for generation.")
+      .addDropdown((dropdown) => {
+        for (const model of TTS_MODELS) {
+          dropdown.addOption(model.slug, model.label);
+        }
+        dropdown.setValue(this.plugin.settings.ttsModel).onChange(async (value) => {
+          this.plugin.settings.ttsModel = value;
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      });
 
-    new Setting(containerEl)
-      .setName("TTS voice")
-      .setDesc("Optional model-specific voice id.")
-      .addText((text) =>
-        text
-          .setPlaceholder("Optional")
-          .setValue(this.plugin.settings.ttsVoice)
-          .onChange(async (value) => {
-            this.plugin.settings.ttsVoice = value.trim();
-            await this.plugin.saveSettings();
-          }),
-      );
+    if (!isVoiceDesignModel(this.plugin.settings.ttsModel)) {
+      new Setting(containerEl)
+        .setName("TTS voice")
+        .setDesc("Optional model-specific voice id.")
+        .addText((text) =>
+          text
+            .setPlaceholder("Optional")
+            .setValue(this.plugin.settings.ttsVoice)
+            .onChange(async (value) => {
+              this.plugin.settings.ttsVoice = value.trim();
+              await this.plugin.saveSettings();
+            }),
+        );
+    } else {
+      new Setting(containerEl)
+        .setName("Voice description")
+        .setDesc(
+          "Natural-language description of the voice for Qwen3-TTS-VoiceDesign (e.g. tone, style, accent, gender, role).",
+        )
+        .addTextArea((text) => {
+          text
+            .setPlaceholder(DEFAULT_VOICE_DESCRIPTION)
+            .setValue(this.plugin.settings.voiceDescription)
+            .onChange(async (value) => {
+              this.plugin.settings.voiceDescription = value.trim() || DEFAULT_VOICE_DESCRIPTION;
+              await this.plugin.saveSettings();
+            });
+          text.inputEl.rows = 2;
+          text.inputEl.style.width = "100%";
+        });
+    }
 
     new Setting(containerEl)
       .setName("Audio output folder")

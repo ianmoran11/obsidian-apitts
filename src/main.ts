@@ -131,6 +131,8 @@ export default class ApiTtsPlugin extends Plugin {
       this.app,
       files.length,
       this.settings.defaultHeadingLevel,
+      this.settings.ttsModel,
+      this.settings.voiceDescription,
       (options) => this.generate(files, { ...options, activeLine }),
       activeLine !== undefined,
     ).open();

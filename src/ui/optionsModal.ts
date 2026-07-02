@@ -1,4 +1,9 @@
 import { App, Modal, Setting } from "obsidian";
+import {
+  DEFAULT_VOICE_DESCRIPTION,
+  TTS_MODELS,
+  isVoiceDesignModel,
+} from "../tts/models";
 
 export type GenerationScope = "whole" | "sections" | "callouts" | "codeBlocks";
 
@@ -7,22 +12,30 @@ export interface GenerationOptions {
   headingLevel: number;
   cursorOnly: boolean;
   activeLine?: number;
+  ttsModel: string;
+  voiceDescription: string;
 }
 
 export class GenerationOptionsModal extends Modal {
   private selectedScope: GenerationScope;
   private headingLevel: number;
   private cursorOnly = true;
+  private ttsModel: string;
+  private voiceDescription: string;
 
   constructor(
     app: App,
     private readonly noteCount: number,
     defaultHeadingLevel: number,
+    private readonly defaultTtsModel: string,
+    private readonly defaultVoiceDescription: string,
     private readonly onSubmit: (options: GenerationOptions) => void,
     private readonly hasActiveCursorSection = false,
   ) {
     super(app);
     this.headingLevel = defaultHeadingLevel;
+    this.ttsModel = defaultTtsModel;
+    this.voiceDescription = defaultVoiceDescription;
     // When a cursor is available, default to reading just the section at the cursor.
     this.selectedScope = hasActiveCursorSection ? "sections" : "whole";
   }
@@ -55,6 +68,36 @@ export class GenerationOptionsModal extends Modal {
             this.renderConditionalSettings();
           }),
       );
+
+    new Setting(contentEl)
+      .setName("TTS model")
+      .setDesc("DeepInfra text-to-speech model.")
+      .addDropdown((dropdown) => {
+        for (const model of TTS_MODELS) {
+          dropdown.addOption(model.slug, model.label);
+        }
+        dropdown.setValue(this.ttsModel).onChange((value) => {
+          this.ttsModel = value;
+          this.renderConditionalSettings();
+        });
+      });
+
+    const voiceDescriptionSetting = new Setting(contentEl)
+      .setName("Voice description")
+      .setDesc(
+        "Natural-language description of the voice for Qwen3-TTS-VoiceDesign (e.g. tone, style, accent, gender, role).",
+      )
+      .addTextArea((text) => {
+        text
+          .setPlaceholder(DEFAULT_VOICE_DESCRIPTION)
+          .setValue(this.voiceDescription)
+          .onChange((value) => {
+            this.voiceDescription = value.trim() || DEFAULT_VOICE_DESCRIPTION;
+          });
+        text.inputEl.rows = 2;
+        text.inputEl.style.width = "100%";
+      });
+    voiceDescriptionSetting.settingEl.addClass("apitts-voice-description-setting");
 
     const headingSetting = new Setting(contentEl)
       .setName("Section heading level")
@@ -99,6 +142,8 @@ export class GenerationOptionsModal extends Modal {
               scope: this.selectedScope,
               headingLevel: this.headingLevel,
               cursorOnly: this.cursorOnly,
+              ttsModel: this.ttsModel,
+              voiceDescription: this.voiceDescription,
             });
           }),
       );
@@ -115,6 +160,14 @@ export class GenerationOptionsModal extends Modal {
     cursorSetting?.toggleClass(
       "apitts-hidden",
       !this.hasActiveCursorSection || this.selectedScope === "whole",
+    );
+
+    // The voice description field only applies to voice-design models.
+    const voiceDescriptionSetting =
+      this.contentEl.querySelector<HTMLElement>(".apitts-voice-description-setting");
+    voiceDescriptionSetting?.toggleClass(
+      "apitts-hidden",
+      !isVoiceDesignModel(this.ttsModel),
     );
   }
 

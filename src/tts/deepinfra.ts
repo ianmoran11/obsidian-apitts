@@ -1,7 +1,12 @@
+import { isVoiceDesignModel } from "./models";
+
 export interface DeepInfraTtsRequest {
   text: string;
   model: string;
+  /** Preset voice id (Kokoro-style models). */
   voice?: string;
+  /** Natural-language voice description (Qwen3-TTS-VoiceDesign-style models). */
+  voiceDescription?: string;
   outputFormat?: "mp3" | "wav";
 }
 
@@ -28,13 +33,20 @@ export class DeepInfraTtsClient {
     signal?: AbortSignal,
   ): Promise<DeepInfraTtsResult> {
     const model = encodeURIComponent(request.model).replace(/%2F/g, "/");
+    const voiceDesign = isVoiceDesignModel(request.model);
     const body: Record<string, string> = {
-      text: request.text,
       output_format: request.outputFormat ?? "mp3",
     };
 
-    if (request.voice?.trim()) {
-      body.voice = request.voice.trim();
+    if (voiceDesign) {
+      // Qwen3-TTS-VoiceDesign uses `input` for the text and `voice` for a
+      // natural-language description of the desired voice.
+      body.input = request.text;
+      const description = request.voiceDescription?.trim();
+      if (description) body.voice = description;
+    } else {
+      body.text = request.text;
+      if (request.voice?.trim()) body.voice = request.voice.trim();
     }
 
     const response = await fetch(

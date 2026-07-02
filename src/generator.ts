@@ -72,8 +72,9 @@ export class TtsGenerator {
         const result = await client.generateSpeech(
           {
             text: chunk.text,
-            model: this.settings.ttsModel,
+            model: options.ttsModel ?? this.settings.ttsModel,
             voice: this.settings.ttsVoice,
+            voiceDescription: options.voiceDescription ?? this.settings.voiceDescription,
             outputFormat: "mp3",
           },
           signal,
