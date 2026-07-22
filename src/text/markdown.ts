@@ -16,6 +16,15 @@ export interface TtsChunk {
   text: string;
 }
 
+export function filterSectionsByTitle(
+  sections: TtsSection[],
+  titleFilter: string,
+): TtsSection[] {
+  const normalizedFilter = titleFilter.trim().toLowerCase();
+  if (!normalizedFilter) return sections;
+  return sections.filter((section) => section.title.toLowerCase().includes(normalizedFilter));
+}
+
 const AUDIO_BLOCK_RE = new RegExp(
   `${escapeRegExp(AUDIO_BLOCK_START)}[\\s\\S]*?${escapeRegExp(AUDIO_BLOCK_END)}\\n*`,
   "g",

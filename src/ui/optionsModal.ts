@@ -10,6 +10,7 @@ export type GenerationScope = "whole" | "sections" | "callouts" | "codeBlocks";
 export interface GenerationOptions {
   scope: GenerationScope;
   headingLevel: number;
+  sectionTitleFilter: string;
   cursorOnly: boolean;
   activeLine?: number;
   ttsModel: string;
@@ -19,6 +20,7 @@ export interface GenerationOptions {
 export class GenerationOptionsModal extends Modal {
   private selectedScope: GenerationScope;
   private headingLevel: number;
+  private sectionTitleFilter = "";
   private cursorOnly = true;
   private ttsModel: string;
   private voiceDescription: string;
@@ -114,6 +116,21 @@ export class GenerationOptionsModal extends Modal {
       });
     headingSetting.settingEl.addClass("apitts-heading-level-setting");
 
+    const sectionFilterSetting = new Setting(contentEl)
+      .setName("Section heading contains")
+      .setDesc(
+        "Only generate sections whose heading includes this text (case-insensitive). Leave blank to include all sections.",
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("e.g. first")
+          .setValue(this.sectionTitleFilter)
+          .onChange((value) => {
+            this.sectionTitleFilter = value;
+          }),
+      );
+    sectionFilterSetting.settingEl.addClass("apitts-section-filter-setting");
+
     const cursorSetting = new Setting(contentEl)
       .setName("Only the block at the cursor")
       .setDesc(
@@ -122,6 +139,7 @@ export class GenerationOptionsModal extends Modal {
       .addToggle((toggle) =>
         toggle.setValue(this.cursorOnly).onChange((value) => {
           this.cursorOnly = value;
+          this.renderConditionalSettings();
         }),
       );
     cursorSetting.settingEl.addClass("apitts-cursor-only-setting");
@@ -141,6 +159,9 @@ export class GenerationOptionsModal extends Modal {
             this.onSubmit({
               scope: this.selectedScope,
               headingLevel: this.headingLevel,
+              sectionTitleFilter: this.hasActiveCursorSection && this.cursorOnly
+                ? ""
+                : this.sectionTitleFilter.trim(),
               cursorOnly: this.cursorOnly,
               ttsModel: this.ttsModel,
               voiceDescription: this.voiceDescription,
@@ -154,6 +175,14 @@ export class GenerationOptionsModal extends Modal {
   private renderConditionalSettings(): void {
     const headingSetting = this.contentEl.querySelector<HTMLElement>(".apitts-heading-level-setting");
     headingSetting?.toggleClass("apitts-hidden", this.selectedScope !== "sections");
+
+    const sectionFilterSetting =
+      this.contentEl.querySelector<HTMLElement>(".apitts-section-filter-setting");
+    sectionFilterSetting?.toggleClass(
+      "apitts-hidden",
+      this.selectedScope !== "sections" ||
+        (this.hasActiveCursorSection && this.cursorOnly),
+    );
 
     // "Current block only" applies to the splitting scopes, and only when a cursor is available.
     const cursorSetting = this.contentEl.querySelector<HTMLElement>(".apitts-cursor-only-setting");

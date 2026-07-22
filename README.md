@@ -5,7 +5,7 @@ APITTS is an Obsidian plugin that generates embedded text-to-speech audio for no
 ## Features
 
 - Generate TTS for the active note, a folder, or multiple picked notes.
-- Choose whole-note audio or section audio split by heading level.
+- Choose whole-note audio or section audio split by heading level, with an optional case-insensitive section-heading filter for bulk generation.
 - Save audio under a mirrored output folder, e.g. `Reading/Chapter 1.md` -> `_Audio/Reading/Chapter 1/001-whole-note.mp3`.
 - Insert or update an embedded audio block in each note.
 - Show progress and per-file logs while generation runs.

@@ -6,6 +6,7 @@ import type { GenerationOptions } from "./ui/optionsModal";
 import type { ProgressModal } from "./ui/progressModal";
 import {
   buildAudioEmbedBlock,
+  filterSectionsByTitle,
   findCalloutAtLine,
   findCodeBlockAtLine,
   findMarkdownSectionAtLine,
@@ -51,6 +52,10 @@ export class TtsGenerator {
     const prepared = await this.prepareFiles(files, options);
     const totalChunks = prepared.reduce((sum, item) => sum + item.chunks.length, 0);
     if (totalChunks === 0) {
+      const sectionFilter = options.sectionTitleFilter.trim();
+      if (options.scope === "sections" && sectionFilter) {
+        throw new Error(`No readable sections matched "${sectionFilter}" in the selected notes.`);
+      }
       throw new Error("No readable text found in the selected notes.");
     }
 
@@ -129,7 +134,11 @@ export class TtsGenerator {
         makeChunksForSection(section, this.settings.ttsCharacterLimit),
       );
       if (chunks.length === 0) {
-        this.progress.addLog(`Skipped ${file.path}: no readable text.`);
+        const sectionFilter = options.sectionTitleFilter.trim();
+        const reason = options.scope === "sections" && sectionFilter
+          ? `no readable sections matched "${sectionFilter}"`
+          : "no readable text";
+        this.progress.addLog(`Skipped ${file.path}: ${reason}.`);
         continue;
       }
       prepared.push({ file, originalMarkdown, chunks });
@@ -170,10 +179,12 @@ export class TtsGenerator {
       }
 
       case "sections":
-      default:
-        return useCursor
+      default: {
+        const sections = useCursor
           ? [findMarkdownSectionAtLine(originalMarkdown, options.headingLevel, options.activeLine!)]
           : splitMarkdownByHeadingLevel(cleanMarkdown, options.headingLevel);
+        return filterSectionsByTitle(sections, options.sectionTitleFilter);
+      }
     }
   }
 
