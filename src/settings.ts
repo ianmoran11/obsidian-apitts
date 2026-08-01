@@ -29,7 +29,7 @@ export const DEFAULT_SETTINGS: ApiTtsSettings = {
   ttsVoice: "",
   voiceDescription: DEFAULT_VOICE_DESCRIPTION,
   audioOutputFolder: "_Audio",
-  ttsCharacterLimit: 12000,
+  ttsCharacterLimit: 10000,
   defaultHeadingLevel: 2,
 };
 
@@ -166,7 +166,7 @@ export class ApiTtsSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Characters per TTS request")
-      .setDesc("Long notes are split into chunks of at most this many characters.")
+      .setDesc("Long notes are split into chunks of at most this many characters. Model-specific API limits are applied automatically.")
       .addText((text) => {
         text.inputEl.type = "number";
         text

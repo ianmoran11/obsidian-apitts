@@ -13,7 +13,11 @@ const result = await build({
   write: false,
 });
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`;
-const { filterSectionsByTitle, splitMarkdownByHeadingLevel } = await import(moduleUrl);
+const {
+  filterSectionsByTitle,
+  groupTtsChunksBySection,
+  splitMarkdownByHeadingLevel,
+} = await import(moduleUrl);
 
 const markdown = [
   "# Chapter",
@@ -54,4 +58,19 @@ test("only checks the supplied cursor section", () => {
   const sectionAtCursor = [sections[2]];
 
   assert.deepEqual(filterSectionsByTitle(sectionAtCursor, "first"), []);
+});
+
+test("groups internal request chunks into their logical sections", () => {
+  const firstSection = { index: 1, title: "First", markdown: "" };
+  const secondSection = { index: 2, title: "Second", markdown: "" };
+  const chunks = [
+    { section: firstSection, chunkIndex: 1, totalChunks: 2, text: "A" },
+    { section: firstSection, chunkIndex: 2, totalChunks: 2, text: "B" },
+    { section: secondSection, chunkIndex: 1, totalChunks: 1, text: "C" },
+  ];
+
+  assert.deepEqual(
+    groupTtsChunksBySection(chunks).map((group) => group.map((chunk) => chunk.text)),
+    [["A", "B"], ["C"]],
+  );
 });

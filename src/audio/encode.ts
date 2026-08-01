@@ -101,6 +101,59 @@ export function encodeMp3(
 }
 
 /**
+ * Build one continuous MP3 stream from sequential 16-bit PCM WAV responses.
+ * The encoder stays open between WAV chunks so the final file has one coherent
+ * MP3 bitstream rather than several independently encoded files concatenated.
+ */
+export class WavChunkMp3Encoder {
+  private encoder: Mp3Encoder | null = null;
+  private sampleRate: number | null = null;
+  private readonly chunks: Uint8Array[] = [];
+
+  appendWav(wav: ArrayBuffer): void {
+    const decoded = decodeWavPcm(wav);
+    if (!decoded) {
+      throw new Error("DeepInfra returned audio that was not a supported 16-bit PCM WAV file.");
+    }
+
+    if (this.encoder === null) {
+      this.sampleRate = decoded.sampleRate;
+      this.encoder = new Mp3Encoder(1, decoded.sampleRate, 96);
+    } else if (decoded.sampleRate !== this.sampleRate) {
+      throw new Error(
+        `DeepInfra returned inconsistent WAV sample rates (${this.sampleRate} and ${decoded.sampleRate}).`,
+      );
+    }
+
+    const blockSize = 1152;
+    for (let i = 0; i < decoded.samples.length; i += blockSize) {
+      const encoded = this.encoder.encodeBuffer(
+        decoded.samples.subarray(i, i + blockSize),
+      );
+      if (encoded.length > 0) this.chunks.push(new Uint8Array(encoded));
+    }
+  }
+
+  finish(): ArrayBuffer {
+    if (this.encoder === null) {
+      throw new Error("Cannot finish combined audio before any WAV chunks were added.");
+    }
+
+    const tail = this.encoder.flush();
+    if (tail.length > 0) this.chunks.push(new Uint8Array(tail));
+
+    const total = this.chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const merged = new Uint8Array(total);
+    let cursor = 0;
+    for (const chunk of this.chunks) {
+      merged.set(chunk, cursor);
+      cursor += chunk.length;
+    }
+    return merged.buffer;
+  }
+}
+
+/**
  * Transcode a WAV ArrayBuffer to MP3. Returns null if the input is not a
  * decodable 16-bit PCM WAV (so callers can fall back to the original bytes).
  */

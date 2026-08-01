@@ -381,6 +381,19 @@ export function makeWholeNoteSection(markdown: string): TtsSection {
   return { index: 1, title: "Whole note", markdown };
 }
 
+export function groupTtsChunksBySection(chunks: TtsChunk[]): TtsChunk[][] {
+  const groups: TtsChunk[][] = [];
+  for (const chunk of chunks) {
+    const current = groups[groups.length - 1];
+    if (current?.[0].section.index === chunk.section.index) {
+      current.push(chunk);
+    } else {
+      groups.push([chunk]);
+    }
+  }
+  return groups;
+}
+
 export function makeChunksForSection(section: TtsSection, maxCharacters: number): TtsChunk[] {
   const text = section.preformatted
     ? section.markdown.replace(/\n{3,}/g, "\n\n").trim()

@@ -9,6 +9,8 @@ export interface TtsModelOption {
   label: string;
   /** How the model selects a voice. */
   kind: TtsModelKind;
+  /** Maximum text characters accepted by one inference request. */
+  maxInputCharacters?: number;
 }
 
 /**
@@ -21,6 +23,7 @@ export const TTS_MODELS: TtsModelOption[] = [
     slug: "hexgrad/Kokoro-82M",
     label: "Kokoro-82M (preset voices)",
     kind: "preset",
+    maxInputCharacters: 10_000,
   },
   {
     slug: "Qwen/Qwen3-TTS-VoiceDesign",
@@ -40,6 +43,20 @@ export const DEFAULT_VOICE_DESCRIPTION =
 export function findTtsModel(slug: string): TtsModelOption | undefined {
   const normalized = slug.trim().toLowerCase();
   return TTS_MODELS.find((model) => model.slug.toLowerCase() === normalized);
+}
+
+export function getTtsModelMaxInputCharacters(slug: string): number | undefined {
+  return findTtsModel(slug)?.maxInputCharacters;
+}
+
+export function getEffectiveTtsCharacterLimit(
+  slug: string,
+  configuredLimit: number,
+): number {
+  const modelLimit = getTtsModelMaxInputCharacters(slug);
+  return modelLimit === undefined
+    ? configuredLimit
+    : Math.min(configuredLimit, modelLimit);
 }
 
 /** True when the model slug selects a voice-design model (description-driven). */

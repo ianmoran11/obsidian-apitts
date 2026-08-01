@@ -26,6 +26,38 @@ export class DeepInfraTtsError extends Error {
   }
 }
 
+export function extractDeepInfraJsonErrorMessage(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const record = data as Record<string, unknown>;
+
+  for (const candidate of [record.detail, record.message]) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  const error = record.error;
+  if (error && typeof error === "object") {
+    const message = (error as Record<string, unknown>).message;
+    if (typeof message === "string" && message.trim()) return message.trim();
+  }
+
+  if (Array.isArray(record.detail)) {
+    const details = record.detail.flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      const item = entry as Record<string, unknown>;
+      if (typeof item.msg !== "string" || !item.msg.trim()) return [];
+      const location = Array.isArray(item.loc)
+        ? item.loc.map(String).filter(Boolean).join(".")
+        : "";
+      return [location ? `${location}: ${item.msg.trim()}` : item.msg.trim()];
+    });
+    if (details.length > 0) return details.join("; ");
+  }
+
+  return null;
+}
+
 export class DeepInfraTtsClient {
   constructor(private readonly apiKey: string) {}
 
@@ -133,19 +165,18 @@ export class DeepInfraTtsClient {
 
   private async readErrorMessage(response: Response): Promise<string> {
     const contentType = response.headers.get("content-type") ?? "";
-    if (contentType.includes("application/json")) {
+    const text = await response.text().catch(() => "");
+
+    if (contentType.includes("application/json") && text) {
       try {
-        const data = await response.json();
-        const detail = data?.detail ?? data?.error?.message ?? data?.message;
-        if (typeof detail === "string" && detail.trim()) {
-          return detail;
-        }
+        const message = extractDeepInfraJsonErrorMessage(JSON.parse(text));
+        if (message) return message;
       } catch {
-        // Fall through to status text.
+        // Fall through to the unparsed response text.
       }
     }
 
-    const text = await response.text().catch(() => "");
     return text.trim() || `DeepInfra TTS failed with HTTP ${response.status}`;
   }
+
 }

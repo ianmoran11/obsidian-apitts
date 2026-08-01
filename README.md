@@ -6,6 +6,7 @@ APITTS is an Obsidian plugin that generates embedded text-to-speech audio for no
 
 - Generate TTS for the active note, a folder, or multiple picked notes.
 - Choose whole-note audio or section audio split by heading level, with an optional case-insensitive section-heading filter for bulk generation.
+- Split long text into model-safe API requests, then combine the responses into one MP3 per logical section.
 - Save audio under a mirrored output folder, e.g. `Reading/Chapter 1.md` -> `_Audio/Reading/Chapter 1/001-whole-note.mp3`.
 - Insert or update an embedded audio block in each note.
 - Show progress and per-file logs while generation runs.
@@ -68,4 +69,4 @@ Release checklist:
 
 ## Settings
 
-Set your DeepInfra API key in APITTS settings. The default model is `hexgrad/Kokoro-82M`, copied from the relevant Scholia TTS implementation.
+Set your DeepInfra API key in APITTS settings. The default model is `hexgrad/Kokoro-82M`, copied from the relevant Scholia TTS implementation. APITTS automatically caps request chunks at each known model's input limit. Kokoro accepts at most 10,000 text characters per request.

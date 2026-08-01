@@ -1,7 +1,12 @@
 import { Notice, TFile, Vault } from "obsidian";
+import { WavChunkMp3Encoder } from "./audio/encode";
 import { saveAudioToMirroredFolder } from "./audio/storage";
 import type { ApiTtsSettings } from "./settings";
 import { DeepInfraTtsClient } from "./tts/deepinfra";
+import {
+  getEffectiveTtsCharacterLimit,
+  getTtsModelMaxInputCharacters,
+} from "./tts/models";
 import type { GenerationOptions } from "./ui/optionsModal";
 import type { ProgressModal } from "./ui/progressModal";
 import {
@@ -10,6 +15,7 @@ import {
   findCalloutAtLine,
   findCodeBlockAtLine,
   findMarkdownSectionAtLine,
+  groupTtsChunksBySection,
   insertOrReplaceAudioBlock,
   makeChunksForSection,
   makeWholeNoteSection,
@@ -61,44 +67,77 @@ export class TtsGenerator {
 
     const client = new DeepInfraTtsClient(this.settings.deepInfraApiKey);
     let completed = 0;
+    let savedFiles = 0;
 
     for (const item of prepared) {
       const embeds: GeneratedEmbed[] = [];
 
-      for (const chunk of item.chunks) {
-        this.throwIfAborted(signal);
-        const label = this.describeChunk(chunk);
-        this.progress.setProgress(
-          completed,
-          totalChunks,
-          `Generating ${item.file.basename}: ${label}`,
-        );
+      for (const sectionChunks of groupTtsChunksBySection(item.chunks)) {
+        const section = sectionChunks[0].section;
+        const combineChunks = sectionChunks.length > 1;
+        const encoder = combineChunks ? new WavChunkMp3Encoder() : null;
+        let finalAudio: ArrayBuffer | null = null;
+        let finalExtension: "mp3" | "wav" = "mp3";
 
-        const result = await client.generateSpeech(
-          {
-            text: chunk.text,
-            model: options.ttsModel ?? this.settings.ttsModel,
-            voice: this.settings.ttsVoice,
-            voiceDescription: options.voiceDescription ?? this.settings.voiceDescription,
-            outputFormat: "mp3",
-          },
-          signal,
-        );
+        for (const chunk of sectionChunks) {
+          this.throwIfAborted(signal);
+          const label = this.describeChunk(chunk);
+          this.progress.setProgress(
+            completed,
+            totalChunks,
+            `Generating ${item.file.basename}: ${label}`,
+          );
+
+          const result = await client.generateSpeech(
+            {
+              text: chunk.text,
+              model: options.ttsModel ?? this.settings.ttsModel,
+              voice: this.settings.ttsVoice,
+              voiceDescription: options.voiceDescription ?? this.settings.voiceDescription,
+              outputFormat: combineChunks ? "wav" : "mp3",
+            },
+            signal,
+          );
+
+          if (encoder) {
+            encoder.appendWav(result.audio);
+          } else {
+            finalAudio = result.audio;
+            finalExtension = result.extension;
+          }
+
+          completed += 1;
+          this.progress.setProgress(
+            completed,
+            totalChunks,
+            `Generated ${item.file.basename}: ${label}`,
+          );
+        }
+
+        if (encoder) {
+          finalAudio = encoder.finish();
+          finalExtension = "mp3";
+          this.progress.addLog(
+            `Combined ${sectionChunks.length} TTS responses for ${section.title}.`,
+          );
+        }
+        if (!finalAudio) {
+          throw new Error(`No audio was generated for ${section.title}.`);
+        }
 
         const saved = await saveAudioToMirroredFolder(this.vault, {
           audioOutputFolder: this.settings.audioOutputFolder,
           sourceFile: item.file,
-          sectionIndex: chunk.section.index,
-          sectionTitle: chunk.section.title,
-          chunkIndex: chunk.chunkIndex,
-          totalChunks: chunk.totalChunks,
-          audio: result.audio,
-          extension: result.extension,
+          sectionIndex: section.index,
+          sectionTitle: section.title,
+          chunkIndex: 1,
+          totalChunks: 1,
+          audio: finalAudio,
+          extension: finalExtension,
         });
 
-        embeds.push({ label, path: saved.path });
-        completed += 1;
-        this.progress.setProgress(completed, totalChunks, `Saved ${saved.path}`);
+        embeds.push({ label: section.title, path: saved.path });
+        savedFiles += 1;
         this.progress.addLog(`Saved ${saved.path}`);
       }
 
@@ -112,7 +151,9 @@ export class TtsGenerator {
       }
     }
 
-    new Notice(`APITTS generated ${totalChunks} audio file${totalChunks === 1 ? "" : "s"}.`);
+    new Notice(
+      `APITTS generated ${savedFiles} audio file${savedFiles === 1 ? "" : "s"} from ${totalChunks} TTS request${totalChunks === 1 ? "" : "s"}.`,
+    );
   }
 
   private async prepareFiles(
@@ -120,6 +161,18 @@ export class TtsGenerator {
     options: GenerationOptions,
   ): Promise<PreparedFile[]> {
     const prepared: PreparedFile[] = [];
+    const selectedModel = options.ttsModel ?? this.settings.ttsModel;
+    const modelLimit = getTtsModelMaxInputCharacters(selectedModel);
+    const chunkLimit = getEffectiveTtsCharacterLimit(
+      selectedModel,
+      this.settings.ttsCharacterLimit,
+    );
+
+    if (modelLimit !== undefined && this.settings.ttsCharacterLimit > modelLimit) {
+      this.progress.addLog(
+        `${selectedModel} accepts at most ${modelLimit.toLocaleString()} characters per request; APITTS will split at that limit.`,
+      );
+    }
 
     for (const file of files) {
       const originalMarkdown = await this.vault.read(file);
@@ -131,7 +184,7 @@ export class TtsGenerator {
         files.length === 1,
       );
       const chunks = sections.flatMap((section) =>
-        makeChunksForSection(section, this.settings.ttsCharacterLimit),
+        makeChunksForSection(section, chunkLimit),
       );
       if (chunks.length === 0) {
         const sectionFilter = options.sectionTitleFilter.trim();
